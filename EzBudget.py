@@ -3,6 +3,7 @@ import os
 
 data_file = "finance_data.csv"
 transaction_file = []
+target_budget = 0.0
 
 def load_data():
     if not os.path.exists(data_file):
@@ -18,7 +19,7 @@ def load_data():
                 row["Amount"] = float(row["Amount"])
                 transaction_file.append(row)
     except Exception as e:
-        print("Error loading data: {e}")
+        print(f"Error loading data: {e}")
 
 def save_data():
     try:
@@ -52,7 +53,7 @@ def add_transaction():
     elif user_choice == "2":
         trans_type = "Expense"
     else:
-        print("Invalid choice")
+        print("Invalid choice\n")
         return
 
     amount = float(input("Enter amount: "))
@@ -83,43 +84,44 @@ def view_summary():
 
     balance = total_income - total_expense
 
-
-
-    print("Total Balance: ", balance)
-    print("Total Expense: ", total_expense)
     print("Total Income: ", total_income)
+    print("Total Expense: ", total_expense)
+    print("Total Balance: ", balance)
 
 def view_transactions():
+    if not transaction_file:
+        print("No transactions found")
+        return
     for record in transaction_file:
         print(
             f"{record['Date']} | {record['Type']} | {record['Category']} | {record['Amount']} | {record['Description']}")
 
-def view_catagory(item=None):
+def view_category(item=None):
     print("\nView transactions by category")
     if not transaction_file:
         print("No transactions found")
         return
 
-    search_catagory = input("Enter the category you want to view: ")
+    search_category = input("Enter the category you want to view: ")
 
-    if not search_catagory:
+    if not search_category:
         print("Invalid category")
         return
 
-    matching_catagories = [
+    matching_categories = [
         item for item in transaction_file
-        if item["Category"].lower() == search_catagory.lower()
+        if item["Category"].lower() == search_category.lower()
     ]
 
-    if not matching_catagories:
-        print("No transactions found under catagory: ", search_catagory)
+    if not matching_categories:
+        print("No transactions found under category: ", search_category)
         return
 
-    print("Showing results for category: ", search_catagory)
+    print("Showing results for category: ", search_category)
 
     category_total = 0.0
 
-    for record in matching_catagories:
+    for item in matching_categories:
         print(f"{item['Date']} | {item['Type']} | {item['Category']} | {item['Amount']} | {item['Description']}")
 
         if item['Type'] == "Income":
@@ -128,6 +130,40 @@ def view_catagory(item=None):
             category_total -= item["Amount"]
 
     print("Category Net Total: ",category_total)
+
+
+# --- NEW AI FEATURE: Category Spending Breakdown ---
+def view_category_breakdown():
+    print("\n--- Category Spending Breakdown ---")
+
+    # Filter expenses only
+    expenses = [r for r in transaction_file if r["Type"] == "Expense"]
+
+    if not expenses:
+        print("No expenses recorded yet to show a breakdown.\n")
+        return
+
+    total_expense = sum(r["Amount"] for r in expenses)
+
+    # Group totals by category
+    category_totals = {}
+    for r in expenses:
+        cat = r["Category"]
+        category_totals[cat] = category_totals.get(cat, 0.0) + r["Amount"]
+
+    # Sort categories by spending (highest first)
+    sorted_categories = sorted(category_totals.items(), key=lambda item: item[1], reverse=True)
+
+    print(f"Total Expenses: ${total_expense:.2f}\n")
+    print(f"{'Category':<15} | {'Amount':<10} | {'Share':<8} | Visual Distribution")
+    print("-" * 60)
+
+    for cat, amt in sorted_categories:
+        percentage = (amt / total_expense) * 100
+        bar_len = int(percentage / 5)  # 1 block = 5%
+        bar = "█" * bar_len
+        print(f"{cat:<15} | ${amt:<9.2f} | {percentage:>5.1f}%  | {bar}")
+    print()
 
 def main():
     load_data()
@@ -138,9 +174,11 @@ def main():
         print("2. View all Transactions")
         print("3. Add Budget")
         print("4. View Summary")
-        print("5. Save and Exit")
+        print("5. View Transactions by Category")
+        print("6. View Transactions by Category")
+        print("7. Save and Exit")
 
-        choice = input("Select an option (1-6): ")
+        choice = input("Select an option (1-7): ")
 
         if choice == "1":
             add_transaction()
@@ -151,8 +189,10 @@ def main():
         elif choice == "4":
             view_summary()
         elif choice == "5":
-            view_catagory()
+            view_category()
         elif choice == "6":
+            view_category_breakdown()
+        elif choice == "7":
             save_data()
             print("Thank you for using EzBudget")
             break
